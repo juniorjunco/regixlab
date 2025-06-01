@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const insumosRoutes = require('./routes/insumos');
 
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -20,5 +21,5 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/insumos', insumosRoutes);
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Servidor en puerto ${PORT}`));
+// ✅ Exporta la app para que Vercel la use
+module.exports = app;
