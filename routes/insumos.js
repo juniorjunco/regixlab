@@ -4,6 +4,8 @@ const Insumo = require('../models/Insumo');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const path = require('path');
+const streamifier = require('streamifier');
+
 
 // Configura Cloudinary con tus datos (usa variables de entorno)
 cloudinary.config({
