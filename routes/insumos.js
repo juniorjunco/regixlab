@@ -2,40 +2,66 @@ const express = require('express');
 const router = express.Router();
 const Insumo = require('../models/Insumo');
 const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
 const path = require('path');
 
-
-// Configuración de multer para guardar imágenes en /uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // carpeta donde se guardarán las imágenes
-  },
-  filename: function (req, file, cb) {
-    
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
-  }
+// Configura Cloudinary con tus datos (usa variables de entorno)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// multer setup para guardar el archivo en memoria
+const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// POST /api/insumos con imagen
 router.post('/', upload.single('imagen'), async (req, res) => {
   try {
-    
-    const imagenUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    let imagenUrl = null;
 
-    const nuevoInsumo = new Insumo({
-      ...req.body,
-      imagenUrl
-    });
+    if (req.file) {
+      // Subir la imagen desde buffer a Cloudinary
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'insumos' },
+        async (error, result) => {
+          if (error) {
+            console.error(error);
+            return res.status(500).json({ message: 'Error al subir imagen a Cloudinary' });
+          }
 
-    await nuevoInsumo.save();
+          imagenUrl = result.secure_url;
 
-    res.status(201).json({
-      message: 'Insumo guardado exitosamente',
-      insumo: nuevoInsumo
-    });
+          // Guardar insumo en DB con URL de imagen
+          const nuevoInsumo = new Insumo({
+            ...req.body,
+            imagenUrl
+          });
+
+          await nuevoInsumo.save();
+
+          return res.status(201).json({
+            message: 'Insumo guardado exitosamente',
+            insumo: nuevoInsumo
+          });
+        }
+      );
+
+      streamifier.createReadStream(req.file.buffer).pipe(uploadStream);
+    } else {
+      // Si no hay imagen, solo guardar insumo sin imagenUrl
+      const nuevoInsumo = new Insumo({
+        ...req.body,
+        imagenUrl: null
+      });
+
+      await nuevoInsumo.save();
+
+      res.status(201).json({
+        message: 'Insumo guardado exitosamente',
+        insumo: nuevoInsumo
+      });
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al guardar el insumo', error: err.message });
